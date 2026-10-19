@@ -89,21 +89,16 @@ class MainActivity : Activity() {
         root.addView(playerView, FrameLayout.LayoutParams(MATCH, MATCH))
 
         // The menu's fade reaches into the left half, so the now-playing card is added after it to stay on top.
-        root.addView(menu.view, FrameLayout.LayoutParams(dp(ChannelMenu.WIDTH_DP), MATCH).apply {
-            gravity = Gravity.RIGHT
-        })
-        root.addView(nowCard.view, FrameLayout.LayoutParams(WRAP, WRAP).apply {
-            gravity = Gravity.LEFT or Gravity.BOTTOM
+        root.addView(menu.view, FrameLayout.LayoutParams(dp(ChannelMenu.WIDTH_DP), MATCH, Gravity.RIGHT))
+        root.addView(nowCard.view, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.LEFT or Gravity.BOTTOM).apply {
             leftMargin = dp(36)
             bottomMargin = dp(32)
         })
-        root.addView(banner.view, FrameLayout.LayoutParams(WRAP, WRAP).apply {
-            gravity = Gravity.RIGHT or Gravity.TOP
+        root.addView(banner.view, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.RIGHT or Gravity.TOP).apply {
             rightMargin = dp(36)
             topMargin = dp(28)
         })
-        root.addView(message.view, FrameLayout.LayoutParams(WRAP, WRAP).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        root.addView(message.view, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
             bottomMargin = dp(30)
         })
 
@@ -126,11 +121,10 @@ class MainActivity : Activity() {
     }
 
     private fun toggleFavorite(channel: Channel) {
-        if (library.toggleFavorite(channel)) {
-            message.show("أضفت ${channel.title} للمفضلة")
-        } else {
-            message.show("شلت ${channel.title} من المفضلة")
-        }
+        message.show(
+            if (library.toggleFavorite(channel)) "أضفت ${channel.title} للمفضلة"
+            else "شلت ${channel.title} من المفضلة"
+        )
         store.saveFavorites(library.favorites)
         menu.refresh(keepPosition = true)
     }
@@ -148,6 +142,11 @@ class MainActivity : Activity() {
 
     private fun playChannel(channel: Channel) {
         startPlayback(channel)
+        watch(channel)
+    }
+
+    /** Closes the menu onto [channel], which is already playing, and names it in the banner. */
+    private fun watch(channel: Channel) {
         hideMenu()
         banner.show(channel, library.numberOf(channel))
     }
@@ -157,11 +156,7 @@ class MainActivity : Activity() {
      * a second press on the channel that is already playing closes the menu.
      */
     private fun selectChannel(channel: Channel) {
-        if (channel.url == playingUrl) {
-            hideMenu()
-            banner.show(channel, library.numberOf(channel))
-            return
-        }
+        if (channel.url == playingUrl) return watch(channel)
         startPlayback(channel)
         nowCard.show(fadeIn = false)
         menu.onPlayingChanged(currentFocus)
@@ -398,11 +393,6 @@ class MainActivity : Activity() {
         private const val EXIT_CONFIRM_MS = 2000L
         private const val EXIT_PRESSES = 3
         private val EXIT_KEYS = setOf(KeyEvent.KEYCODE_ESCAPE)
-        private val DEFAULT_PLAYLIST_URLS = listOf(
-            "https://iptv-org.github.io/iptv/languages/ara.m3u",
-            // "https://iptv-org.github.io/iptv/regions/arab.m3u",
-            // "https://iptv-org.github.io/iptv/countries/sa.m3u",
-            // "https://iptv-org.github.io/iptv/categories/news.m3u"
-        )
+        private val DEFAULT_PLAYLIST_URLS = listOf("https://iptv-org.github.io/iptv/languages/ara.m3u")
     }
 }

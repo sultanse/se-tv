@@ -7,7 +7,6 @@ import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.StateListDrawable
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -78,25 +77,22 @@ class AddChannelsDialog(
 
     private fun optionView(icon: IconDrawable.Icon, title: String, subtitle: String) =
         LinearLayout(context).apply {
-            val color = Palette.TEXT
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             isFocusable = true
             isClickable = true
             setPaddingRelative(context.dp(14), 0, context.dp(14), 0)
-            background = StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused), roundRect(Palette.SAND, context.dp(9).toFloat()))
-                addState(intArrayOf(), roundRect(Color.TRANSPARENT, context.dp(9).toFloat()))
-            }
+            val radius = context.dp(9).toFloat()
+            background = focusBackground(roundRect(Palette.SAND, radius), roundRect(Color.TRANSPARENT, radius))
             addView(ImageView(context).apply {
                 isDuplicateParentStateEnabled = true
-                setImageDrawable(IconDrawable(icon, colorsOnFocus(color, Palette.INK), context.dp(16)))
+                setImageDrawable(IconDrawable(icon, colorsOnFocus(Palette.TEXT, Palette.INK), context.dp(16)))
             })
             val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
             texts.addView(context.label(title, 14f).apply {
                 isDuplicateParentStateEnabled = true
                 setSingleLine(true)
-                setTextColor(colorsOnFocus(color, Palette.INK))
+                setTextColor(colorsOnFocus(Palette.TEXT, Palette.INK))
             })
             texts.addView(context.label(subtitle, 9f).apply {
                 isDuplicateParentStateEnabled = true

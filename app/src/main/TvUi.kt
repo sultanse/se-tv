@@ -21,8 +21,10 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
 
 const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
@@ -66,20 +68,28 @@ fun Context.label(
     includeFontPadding = false
 }
 
-/** Text that turns to [selected] while its row is the focused item. */
-fun colorsOnSelect(normal: Int, selected: Int = Palette.INK): ColorStateList = ColorStateList(
-    arrayOf(
-        intArrayOf(android.R.attr.state_selected),
-        intArrayOf(android.R.attr.state_pressed),
-        intArrayOf()
-    ),
-    intArrayOf(selected, selected, normal)
+/** A list row is highlighted while the remote has it selected, or while it is pressed. */
+private val SELECTED_STATES = intArrayOf(android.R.attr.state_selected, android.R.attr.state_pressed)
+private val FOCUSED_STATES = intArrayOf(android.R.attr.state_focused)
+
+/** [on] in any of [states], [off] otherwise. */
+private fun stateColors(states: IntArray, on: Int, off: Int) = ColorStateList(
+    Array(states.size + 1) { i -> if (i < states.size) intArrayOf(states[i]) else intArrayOf() },
+    IntArray(states.size + 1) { i -> if (i < states.size) on else off }
 )
 
-fun colorsOnFocus(normal: Int, focused: Int = Palette.SAND): ColorStateList = ColorStateList(
-    arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
-    intArrayOf(focused, normal)
-)
+/** [on] in any of [states], [off] otherwise. */
+private fun stateDrawable(states: IntArray, on: Drawable, off: Drawable) = StateListDrawable().apply {
+    states.forEach { addState(intArrayOf(it), on) }
+    addState(intArrayOf(), off)
+}
+
+/** Text that turns to [selected] while its row is the highlighted item. */
+fun colorsOnSelect(normal: Int, selected: Int = Palette.INK): ColorStateList =
+    stateColors(SELECTED_STATES, selected, normal)
+
+fun colorsOnFocus(normal: Int, focused: Int = Palette.SAND): ColorStateList =
+    stateColors(FOCUSED_STATES, focused, normal)
 
 fun roundRect(color: Int, radius: Float, strokeWidth: Int = 0, strokeColor: Int = Color.TRANSPARENT) =
     GradientDrawable().apply {
@@ -88,13 +98,33 @@ fun roundRect(color: Int, radius: Float, strokeWidth: Int = 0, strokeColor: Int 
         if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
     }
 
-fun Context.rowBackground(radius: Float, normal: Int = Color.TRANSPARENT): StateListDrawable =
-    StateListDrawable().apply {
-        val focused = roundRect(Palette.SAND, radius)
-        addState(intArrayOf(android.R.attr.state_selected), focused)
-        addState(intArrayOf(android.R.attr.state_pressed), focused)
-        addState(intArrayOf(), roundRect(normal, radius))
-    }
+/** [focused] while the view has focus, [normal] otherwise. */
+fun focusBackground(focused: Drawable, normal: Drawable): StateListDrawable =
+    stateDrawable(FOCUSED_STATES, focused, normal)
+
+/** A row that fills with sand while highlighted, [normal] otherwise. */
+fun rowBackground(radius: Float, normal: Int = Color.TRANSPARENT): StateListDrawable =
+    stateDrawable(SELECTED_STATES, roundRect(Palette.SAND, radius), roundRect(normal, radius))
+
+/** A red dot followed by [text]; pass [colors] to change both with the row's state. */
+fun Context.liveLabel(
+    text: String,
+    sizeSp: Float,
+    dotDp: Int,
+    gapDp: Int,
+    colors: ColorStateList = ColorStateList.valueOf(Palette.LIVE)
+) = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER_VERTICAL
+    addView(View(context).apply {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(colors)
+        }
+    }, LinearLayout.LayoutParams(dp(dotDp), dp(dotDp)))
+    addView(label(text, sizeSp, typeface = TvFonts.medium).apply { setTextColor(colors) },
+        LinearLayout.LayoutParams(WRAP, WRAP).apply { marginStart = dp(gapDp) })
+}
 
 fun scaleOnSelect(scale: Float): StateListAnimator = StateListAnimator().apply {
     fun to(value: Float) = ObjectAnimator.ofPropertyValuesHolder(
@@ -106,14 +136,30 @@ fun scaleOnSelect(scale: Float): StateListAnimator = StateListAnimator().apply {
     addState(intArrayOf(), to(1f))
 }
 
+/** A drawable that draws with one [paint], which takes the alpha and colour filter set on it. */
+abstract class PaintedDrawable(protected val paint: Paint) : Drawable() {
+
+    override fun setAlpha(alpha: Int) {
+        paint.alpha = alpha
+    }
+
+    override fun setColorFilter(colorFilter: ColorFilter?) {
+        paint.colorFilter = colorFilter
+    }
+
+    @Deprecated("Deprecated in Android")
+    override fun getOpacity() = PixelFormat.TRANSLUCENT
+}
+
 /**
  * A solid panel colour that fades out over [fadeWidthPx] towards its left edge.
  * The fade follows a smoothstep curve instead of a straight line, so neither end of it
  * shows as an edge over the video.
  */
-class EdgeFadeDrawable(private val color: Int, private val fadeWidthPx: Int) : Drawable() {
-
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG)
+class EdgeFadeDrawable(
+    private val color: Int,
+    private val fadeWidthPx: Int
+) : PaintedDrawable(Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG)) {
 
     override fun onBoundsChange(bounds: Rect) {
         val steps = 24
@@ -131,17 +177,6 @@ class EdgeFadeDrawable(private val color: Int, private val fadeWidthPx: Int) : D
     override fun draw(canvas: Canvas) {
         canvas.drawRect(bounds, paint)
     }
-
-    override fun setAlpha(alpha: Int) {
-        paint.alpha = alpha
-    }
-
-    override fun setColorFilter(colorFilter: ColorFilter?) {
-        paint.colorFilter = colorFilter
-    }
-
-    @Deprecated("Deprecated in Android")
-    override fun getOpacity() = PixelFormat.TRANSLUCENT
 }
 
 /** Small line icons drawn on a 24×24 grid, so the app needs no image assets. */
@@ -149,15 +184,14 @@ class IconDrawable(
     private val icon: Icon,
     private val colors: ColorStateList,
     private val sizePx: Int
-) : Drawable() {
+) : PaintedDrawable(Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    strokeCap = Paint.Cap.ROUND
+    strokeJoin = Paint.Join.ROUND
+    color = colors.defaultColor
+}) {
 
     enum class Icon { SEARCH, PLUS, STAR, FOLDER, LINK }
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-        color = colors.defaultColor
-    }
     private val path = Path()
 
     override fun getIntrinsicWidth() = sizePx
@@ -219,15 +253,4 @@ class IconDrawable(
         }
         canvas.restore()
     }
-
-    override fun setAlpha(alpha: Int) {
-        paint.alpha = alpha
-    }
-
-    override fun setColorFilter(colorFilter: ColorFilter?) {
-        paint.colorFilter = colorFilter
-    }
-
-    @Deprecated("Deprecated in Android")
-    override fun getOpacity() = PixelFormat.TRANSLUCENT
 }
