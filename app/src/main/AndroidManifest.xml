@@ -17,7 +17,7 @@
         android:label="SE TV"
         android:usesCleartextTraffic="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SultanTV">
+        android:theme="@style/Theme.SeTV">
 
         <activity
             android:name=".MainActivity"

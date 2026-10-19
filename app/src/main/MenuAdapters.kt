@@ -1,4 +1,6 @@
-package com.sultan.simpletv
+@file:Suppress("PackageDirectoryMismatch")
+
+package com.se.simpletv
 
 import android.content.Context
 import android.graphics.Color
@@ -12,15 +14,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-
-data class Category(
-    val kind: Kind,
-    val label: String = "",
-    val count: Int = 0,
-    val group: String = ""
-) {
-    enum class Kind { ALL, FAVORITES, GROUP, SEPARATOR, ADD }
-}
 
 class CategoryAdapter(private val context: Context) : BaseAdapter() {
 

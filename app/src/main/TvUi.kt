@@ -1,4 +1,6 @@
-package com.sultan.simpletv
+@file:Suppress("PackageDirectoryMismatch")
+
+package com.se.simpletv
 
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
@@ -20,7 +22,11 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.util.TypedValue
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
+
+const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
 object Palette {
     const val NIGHT = 0xFF16122B.toInt()
