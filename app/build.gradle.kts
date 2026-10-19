@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.sultan.simpletv"
+    namespace = "com.se.simpletv"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.sultan.simpletv"
+        applicationId = "com.se.simpletv"
         minSdk = 23
         targetSdk = 37
         versionCode = 2
@@ -18,6 +18,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    // The .kt files live directly in src/main, next to the manifest, instead of src/main/kotlin.
+    sourceSets["main"].kotlin.srcDir("src/main")
 }
 
 dependencies {

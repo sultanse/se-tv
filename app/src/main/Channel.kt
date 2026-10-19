@@ -1,4 +1,6 @@
-package com.sultan.simpletv
+@file:Suppress("PackageDirectoryMismatch")
+
+package com.se.simpletv
 
 data class Channel(
     val name: String,
