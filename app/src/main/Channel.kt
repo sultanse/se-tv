@@ -7,12 +7,14 @@ data class Channel(
     val url: String,
     val group: String = ""
 ) {
+    // Channels are only read on the main thread, so the lazy values skip locking.
+
     /** Name without the "(1080p)" and "[Geo-blocked]" markers that iptv-org lists append. */
-    val title: String by lazy {
+    val title: String by lazy(LazyThreadSafetyMode.NONE) {
         name.replace(QUALITY_REGEX, "").replace(TAG_REGEX, "").trim().ifBlank { name }
     }
 
-    val quality: String by lazy {
+    val quality: String by lazy(LazyThreadSafetyMode.NONE) {
         val height = QUALITY_REGEX.find(name)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
         when {
             height >= 2160 -> "4K"
@@ -26,10 +28,15 @@ data class Channel(
     val geoBlocked: Boolean get() = name.contains("[Geo-blocked]", ignoreCase = true)
     val notAlwaysOn: Boolean get() = name.contains("[Not 24/7]", ignoreCase = true)
 
-    /** A channel can sit in several groups, e.g. "General;News". */
-    val groups: List<String> by lazy {
-        group.split(';').map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { listOf(UNDEFINED_GROUP) }
+    /** A channel can sit in several groups, e.g. "General;News". Group names ignore case, see [groupKey]. */
+    val groups: List<String> by lazy(LazyThreadSafetyMode.NONE) {
+        group.split(';').map { it.trim() }.filter { it.isNotEmpty() }
+            .distinctBy(::groupKey)
+            .ifEmpty { listOf(UNDEFINED_GROUP) }
     }
+
+    /** The groups in Arabic, as shown under the channel's name. */
+    val groupsLabel: String by lazy(LazyThreadSafetyMode.NONE) { groups.joinToString("، ", transform = ::groupLabel) }
 
     companion object {
         const val UNDEFINED_GROUP = "Undefined"
@@ -38,7 +45,8 @@ data class Channel(
     }
 }
 
-private val GROUP_LABELS = mapOf(
+private val GROUP_LABELS = sortedMapOf(
+    String.CASE_INSENSITIVE_ORDER,
     "News" to "أخبار",
     "General" to "عام",
     "Religious" to "ديني",
@@ -70,5 +78,7 @@ private val GROUP_LABELS = mapOf(
     "Auto" to "سيارات"
 )
 
-fun groupLabel(group: String): String =
-    GROUP_LABELS[group] ?: GROUP_LABELS.entries.firstOrNull { it.key.equals(group, ignoreCase = true) }?.value ?: group
+fun groupLabel(group: String): String = GROUP_LABELS[group] ?: group
+
+/** Playlists spell the same group differently ("News", "news"); groups with the same key are one group. */
+fun groupKey(group: String): String = group.lowercase()

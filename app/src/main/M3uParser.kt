@@ -7,6 +7,7 @@ object M3uParser {
 
     private val NAME_REGEX = Regex("tvg-name=\"([^\"]*)\"")
     private val GROUP_REGEX = Regex("group-title=\"([^\"]*)\"")
+    private val STREAM_SCHEMES = listOf("http://", "https://", "rtsp://")
 
     fun parse(text: String): List<Channel> {
         val result = mutableListOf<Channel>()
@@ -17,22 +18,15 @@ object M3uParser {
             val line = rawLine.trim()
             when {
                 line.startsWith("#EXTINF", ignoreCase = true) -> {
-                    val commaIndex = line.indexOf(',')
-                    val commaName = if (commaIndex >= 0 && commaIndex < line.lastIndex) {
-                        line.substring(commaIndex + 1).trim()
-                    } else {
-                        ""
-                    }
-                    val tvgName = NAME_REGEX.find(line)?.groupValues?.getOrNull(1).orEmpty()
+                    val comma = titleComma(line)
+                    val commaName = if (comma >= 0) line.substring(comma + 1).trim() else ""
+                    val tvgName = NAME_REGEX.find(line)?.groupValues?.get(1).orEmpty()
                     currentName = commaName.ifBlank { tvgName }.ifBlank { null }
-                    currentGroup = GROUP_REGEX.find(line)?.groupValues?.getOrNull(1).orEmpty()
+                    currentGroup = GROUP_REGEX.find(line)?.groupValues?.get(1).orEmpty()
                 }
 
                 line.isNotBlank() && !line.startsWith("#") -> {
-                    if (line.startsWith("http://", ignoreCase = true) ||
-                        line.startsWith("https://", ignoreCase = true) ||
-                        line.startsWith("rtsp://", ignoreCase = true)
-                    ) {
+                    if (STREAM_SCHEMES.any { line.startsWith(it, ignoreCase = true) }) {
                         result += Channel(
                             name = currentName ?: "قناة ${result.size + 1}",
                             url = line,
@@ -46,6 +40,16 @@ object M3uParser {
         }
 
         return result.distinctBy { it.url }
+    }
+
+    /** The comma before an #EXTINF title: the first one outside a quoted attribute like tvg-name="A, B". */
+    private fun titleComma(line: String): Int {
+        var quoted = false
+        line.forEachIndexed { i, c ->
+            if (c == '"') quoted = !quoted
+            else if (c == ',' && !quoted) return i
+        }
+        return -1
     }
 
     /** True for a single stream's own playlist (pasted instead of a channel list). */

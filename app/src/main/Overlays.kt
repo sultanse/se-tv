@@ -3,7 +3,6 @@
 package com.se.simpletv
 
 import android.content.Context
-import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
@@ -45,7 +44,7 @@ class ChannelBanner(context: Context) {
     fun show(channel: Channel, channelNumber: Int) {
         number.text = channelNumber.toString()
         name.text = channel.title
-        meta.text = listOf(channel.groups.joinToString("، ") { groupLabel(it) }, channel.quality)
+        meta.text = listOf(channel.groupsLabel, channel.quality)
             .filter { it.isNotEmpty() }
             .joinToString("   ")
         handler.removeCallbacks(autoHide)
@@ -74,7 +73,7 @@ class NowPlayingCard(context: Context) {
         orientation = LinearLayout.VERTICAL
         background = roundRect(Palette.night(0.88f), context.dp(11).toFloat())
         setPadding(context.dp(16), context.dp(11), context.dp(16), context.dp(11))
-        addView(context.liveLabel("يُعرض الآن", 10f))
+        addView(context.liveLabel("يُعرض الآن", 10f, dotDp = 6, gapDp = 5))
         addView(name, LinearLayout.LayoutParams(WRAP, WRAP).apply { topMargin = context.dp(4) })
     }
 
@@ -118,18 +117,4 @@ class MessageToast(context: Context) {
     }
 
     fun release() = handler.removeCallbacksAndMessages(null)
-}
-
-private fun Context.liveLabel(text: String, sizeSp: Float) = LinearLayout(this).apply {
-    orientation = LinearLayout.HORIZONTAL
-    gravity = Gravity.CENTER_VERTICAL
-    addView(View(context).apply {
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(Palette.LIVE)
-        }
-    }, LinearLayout.LayoutParams(dp(6), dp(6)))
-    addView(label(text, sizeSp, Palette.LIVE, TvFonts.medium), LinearLayout.LayoutParams(WRAP, WRAP).apply {
-        marginStart = dp(5)
-    })
 }

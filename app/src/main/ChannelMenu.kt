@@ -5,7 +5,6 @@ package com.se.simpletv
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.StateListDrawable
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -33,6 +32,7 @@ class ChannelMenu(
     private var categories: List<Category> = emptyList()
     private var activeCategory = 0
     private var query = ""
+    private var shownHints: List<Pair<String, String>> = emptyList()
 
     /** The channels currently listed; channel up/down while watching moves through these. */
     var visibleChannels: List<Channel> = emptyList()
@@ -157,14 +157,11 @@ class ChannelMenu(
         setCompoundDrawablesRelativeWithIntrinsicBounds(
             IconDrawable(IconDrawable.Icon.SEARCH, colorsOnFocus(Palette.MUTED), context.dp(15)), null, null, null
         )
-        background = StateListDrawable().apply {
-            val radius = context.dp(18).toFloat()
-            addState(
-                intArrayOf(android.R.attr.state_focused),
-                roundRect(Palette.NIGHT_RAISED, radius, context.dp(1.5f), Palette.SAND)
-            )
-            addState(intArrayOf(), roundRect(Palette.NIGHT_RAISED, radius))
-        }
+        val radius = context.dp(18).toFloat()
+        background = focusBackground(
+            focused = roundRect(Palette.NIGHT_RAISED, radius, context.dp(1.5f), Palette.SAND),
+            normal = roundRect(Palette.NIGHT_RAISED, radius)
+        )
         addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -194,6 +191,9 @@ class ChannelMenu(
                 "رجوع" to back
             )
         }
+        // Focus moves within a zone far more often than between zones; only rebuild when the hints change.
+        if (hints == shownHints) return
+        shownHints = hints
         hintsRow.removeAllViews()
         hints.forEachIndexed { i, (key, text) ->
             val chip = context.label(key, 8.5f, typeface = TvFonts.medium).apply {
@@ -232,7 +232,7 @@ class ChannelMenu(
     private fun rebuildCategories() {
         val previous = categories.getOrNull(activeCategory)
         categories = library.categories()
-        activeCategory = categories.indexOfFirst { it.kind == previous?.kind && it.group == previous.group }
+        activeCategory = categories.indexOfFirst { it.kind == previous?.kind && groupKey(it.group) == groupKey(previous.group) }
             .takeIf { it >= 0 } ?: 0
         categoryAdapter.items = categories
         categoryAdapter.activePosition = activeCategory
@@ -243,12 +243,13 @@ class ChannelMenu(
         visibleChannels = library.filter(category, query)
         val position = channelList.selectedItemPosition
         channelAdapter.items = visibleChannels
-        emptyView.text = if (library.channels.isEmpty()) {
-            "ما فيه قنوات بعد.\nاختر «إضافة قنوات» من آخر قائمة التصنيفات."
-        } else if (category?.kind == Category.Kind.FAVORITES && query.isEmpty()) {
-            "ما عندك قنوات مفضلة.\nوقف على أي قناة واضغط OK ضغطة طويلة عشان تضيفها هنا."
-        } else {
-            "ما فيه قناة اسمها «$query» في هذا التصنيف.\nجرّب «كل القنوات» أو اكتب جزء من الاسم."
+        emptyView.text = when {
+            library.channels.isEmpty() ->
+                "ما فيه قنوات بعد.\nاختر «إضافة قنوات» من آخر قائمة التصنيفات."
+            category?.kind == Category.Kind.FAVORITES && query.isEmpty() ->
+                "ما عندك قنوات مفضلة.\nوقف على أي قناة واضغط OK ضغطة طويلة عشان تضيفها هنا."
+            else ->
+                "ما فيه قناة اسمها «$query» في هذا التصنيف.\nجرّب «كل القنوات» أو اكتب جزء من الاسم."
         }
         channelList.setSelection(
             if (keepPosition) position.coerceIn(0, (visibleChannels.size - 1).coerceAtLeast(0)) else 0

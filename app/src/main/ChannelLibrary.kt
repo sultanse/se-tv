@@ -19,7 +19,7 @@ class ChannelLibrary(channels: List<Channel> = emptyList(), favorites: Set<Strin
 
     private val _channels = mutableListOf<Channel>()
     private val _favorites = favorites.toMutableSet()
-    private val numberByUrl = mutableMapOf<String, Int>()
+    private val indexByUrl = mutableMapOf<String, Int>()
 
     val channels: List<Channel> get() = _channels
     val favorites: Set<String> get() = _favorites
@@ -32,50 +32,52 @@ class ChannelLibrary(channels: List<Channel> = emptyList(), favorites: Set<Strin
     fun addAll(imported: List<Channel>): Int {
         var added = 0
         imported.forEach { channel ->
-            if (channel.url !in numberByUrl) {
+            if (channel.url !in indexByUrl) {
+                indexByUrl[channel.url] = _channels.size
                 _channels += channel
-                numberByUrl[channel.url] = _channels.size
                 added++
             }
         }
         return added
     }
 
-    fun find(url: String?): Channel? = url?.let { u -> _channels.firstOrNull { it.url == u } }
+    fun find(url: String?): Channel? = indexByUrl[url]?.let(_channels::get)
 
     /** 1-based position in the full list; the number shown next to a channel. */
-    fun numberOf(channel: Channel): Int = numberByUrl[channel.url] ?: 0
+    fun numberOf(channel: Channel): Int = indexByUrl[channel.url]?.plus(1) ?: 0
 
     fun isFavorite(channel: Channel): Boolean = channel.url in _favorites
 
     /** Adds or removes the favorite. Returns true when the channel is now a favorite. */
     fun toggleFavorite(channel: Channel): Boolean =
-        if (_favorites.add(channel.url)) true else !_favorites.remove(channel.url)
+        if (_favorites.remove(channel.url)) false else _favorites.add(channel.url)
 
     /** All, favorites, then each group by size, then the "add channels" entry. */
     fun categories(): List<Category> {
-        val counts = mutableMapOf<String, Int>()
-        _channels.forEach { channel -> channel.groups.forEach { counts[it] = (counts[it] ?: 0) + 1 } }
-
+        // Spellings of one group count together, under the first spelling seen.
+        val groups = _channels.flatMap { it.groups }.groupBy(::groupKey).values
         return buildList {
             add(Category(Category.Kind.ALL, "كل القنوات", _channels.size))
             add(Category(Category.Kind.FAVORITES, "المفضلة", _channels.count { it.url in _favorites }))
             add(Category(Category.Kind.SEPARATOR))
-            counts.entries.sortedByDescending { it.value }.forEach { (group, count) ->
-                add(Category(Category.Kind.GROUP, groupLabel(group), count, group))
+            groups.sortedByDescending { it.size }.forEach { spellings ->
+                val group = spellings.first()
+                add(Category(Category.Kind.GROUP, groupLabel(group), spellings.size, group))
             }
             add(Category(Category.Kind.SEPARATOR))
             add(Category(Category.Kind.ADD, "إضافة قنوات"))
         }
     }
 
-    fun filter(category: Category?, query: String): List<Channel> =
-        _channels.filter { channel ->
+    fun filter(category: Category?, query: String): List<Channel> {
+        val key = groupKey(category?.group.orEmpty())
+        return _channels.filter { channel ->
             val inCategory = when (category?.kind) {
                 Category.Kind.FAVORITES -> channel.url in _favorites
-                Category.Kind.GROUP -> category.group in channel.groups
+                Category.Kind.GROUP -> channel.groups.any { groupKey(it) == key }
                 else -> true
             }
             inCategory && (query.isEmpty() || channel.title.contains(query, ignoreCase = true))
         }
+    }
 }
