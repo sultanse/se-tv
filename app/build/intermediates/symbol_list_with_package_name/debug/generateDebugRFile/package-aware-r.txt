@@ -1,0 +1,4 @@
+com.sultan.simpletv
+drawable app_icon
+drawable tv_banner
+style Theme_SultanTV

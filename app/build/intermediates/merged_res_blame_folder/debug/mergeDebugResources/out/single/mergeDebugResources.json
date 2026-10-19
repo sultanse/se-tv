@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.sultan.simpletv.app-debug-11:/drawable_app_icon.png.flat",
+        "source": "com.sultan.simpletv.app-main-13:/drawable/app_icon.png"
+    },
+    {
+        "merged": "com.sultan.simpletv.app-debug-11:/drawable_tv_banner.png.flat",
+        "source": "com.sultan.simpletv.app-main-13:/drawable/tv_banner.png"
+    }
+]
