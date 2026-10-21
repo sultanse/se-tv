@@ -15,6 +15,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -73,6 +74,8 @@ class MainActivity : Activity() {
 
         setContentView(buildRoot())
         hideSystemUi()
+        // The TV's screensaver must not start while the app is on screen, even with the menu open and nothing playing.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         menu.refresh()
 
         library.find(store.lastUrl)?.let(::startPlayback)
